@@ -267,7 +267,6 @@ public class MonitorService extends Service {
 
         Notification.Builder b = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(buildCpuNotificationSmallIcon())
-                .setLargeIcon(buildCpuNotificationLargeBitmap())
                 .setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pi)
@@ -282,132 +281,84 @@ public class MonitorService extends Service {
 
 
     /**
-     * Small icon para barra de status/notificação fechada.
-     * Precisa ser simples e monocromático para o Android renderizar bem.
-     * Aqui usamos uma versão mais legível do chip, inspirada no app verde.
+     * Ícone branco/monocromático de CPU para a barra de status e notificação.
+     *
+     * O Android usa apenas a máscara alfa do small icon e aplica a cor do sistema.
+     * Por isso o desenho é simples, grosso e sem fundo, para continuar legível
+     * tanto na pré-visualização fechada quanto na barra de notificações.
      */
     private Icon buildCpuNotificationSmallIcon() {
         final int size = 128;
 
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap = Bitmap.createBitmap(
+                size,
+                size,
+                Bitmap.Config.ARGB_8888
+        );
+
         Canvas canvas = new Canvas(bitmap);
 
         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         fill.setColor(Color.WHITE);
         fill.setStyle(Paint.Style.FILL);
 
-        Paint cut = new Paint(Paint.ANTI_ALIAS_FLAG);
-        cut.setColor(Color.TRANSPARENT);
-        cut.setStyle(Paint.Style.STROKE);
-        cut.setStrokeWidth(8f);
-        cut.setStrokeCap(Paint.Cap.ROUND);
-        cut.setStrokeJoin(Paint.Join.ROUND);
-        cut.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
+        clear.setColor(Color.TRANSPARENT);
+        clear.setStyle(Paint.Style.FILL);
+        clear.setXfermode(
+                new android.graphics.PorterDuffXfermode(
+                        android.graphics.PorterDuff.Mode.CLEAR
+                )
+        );
 
-        Paint cutText = new Paint(Paint.ANTI_ALIAS_FLAG);
-        cutText.setColor(Color.TRANSPARENT);
-        cutText.setStyle(Paint.Style.FILL);
-        cutText.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        cutText.setTextAlign(Paint.Align.CENTER);
-        cutText.setTextSize(24f);
-        cutText.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+        // Corpo principal do chip.
+        RectF body = new RectF(28f, 28f, 100f, 100f);
+        canvas.drawRoundRect(body, 14f, 14f, fill);
 
-        // Corpo do microchip.
-        RectF body = new RectF(26f, 26f, 102f, 102f);
-        canvas.drawRoundRect(body, 16f, 16f, fill);
+        // Recorte central para formar o contorno do chip.
+        RectF inner = new RectF(43f, 43f, 85f, 85f);
+        canvas.drawRoundRect(inner, 6f, 6f, clear);
 
-        // Pinos mais grossos e menos numerosos para ficar reconhecível na barra.
-        float[] topBottomX = {44f, 64f, 84f};
-        for (float x : topBottomX) {
-            canvas.drawRoundRect(new RectF(x - 4f, 6f, x + 4f, 24f), 4f, 4f, fill);
-            canvas.drawRoundRect(new RectF(x - 4f, 104f, x + 4f, 122f), 4f, 4f, fill);
+        // Pinos: poucos, grossos e simétricos para aparecerem bem pequenos.
+        float[] pinPos = {42f, 64f, 86f};
+
+        for (float x : pinPos) {
+            canvas.drawRoundRect(
+                    new RectF(x - 4f, 7f, x + 4f, 26f),
+                    4f,
+                    4f,
+                    fill
+            );
+
+            canvas.drawRoundRect(
+                    new RectF(x - 4f, 102f, x + 4f, 121f),
+                    4f,
+                    4f,
+                    fill
+            );
         }
 
-        float[] leftRightY = {44f, 64f, 84f};
-        for (float y : leftRightY) {
-            canvas.drawRoundRect(new RectF(6f, y - 4f, 24f, y + 4f), 4f, 4f, fill);
-            canvas.drawRoundRect(new RectF(104f, y - 4f, 122f, y + 4f), 4f, 4f, fill);
+        for (float y : pinPos) {
+            canvas.drawRoundRect(
+                    new RectF(7f, y - 4f, 26f, y + 4f),
+                    4f,
+                    4f,
+                    fill
+            );
+
+            canvas.drawRoundRect(
+                    new RectF(102f, y - 4f, 121f, y + 4f),
+                    4f,
+                    4f,
+                    fill
+            );
         }
 
-        // Janela interna para lembrar o ícone verde.
-        RectF core = new RectF(42f, 42f, 86f, 86f);
-        canvas.drawRoundRect(core, 8f, 8f, cut);
-
-        // CPU vazado no centro para aproximar do ícone do app verde.
-        Paint.FontMetrics fm = cutText.getFontMetrics();
-        float centerY = 64f - (fm.ascent + fm.descent) / 2f;
-        canvas.drawText("CPU", 64f, centerY, cutText);
+        // Pequeno núcleo no centro para reforçar o símbolo de processador.
+        RectF core = new RectF(54f, 54f, 74f, 74f);
+        canvas.drawRoundRect(core, 4f, 4f, fill);
 
         return Icon.createWithBitmap(bitmap);
-    }
-
-    /**
-     * Ícone grande/colorido mostrado com mais destaque no painel expandido.
-     * É inspirado no visual do app verde de referência enviado pelo usuário.
-     */
-    private Bitmap buildCpuNotificationLargeBitmap() {
-        final int size = 256;
-
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-
-        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bg.setStyle(Paint.Style.FILL);
-        bg.setColor(Color.parseColor("#22B95A"));
-
-        Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
-        shade.setStyle(Paint.Style.FILL);
-        shade.setColor(Color.parseColor("#1A9B4B"));
-
-        Paint white = new Paint(Paint.ANTI_ALIAS_FLAG);
-        white.setStyle(Paint.Style.FILL);
-        white.setColor(Color.WHITE);
-
-        Paint detail = new Paint(Paint.ANTI_ALIAS_FLAG);
-        detail.setStyle(Paint.Style.FILL);
-        detail.setColor(Color.parseColor("#1D8F48"));
-        detail.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        detail.setTextAlign(Paint.Align.CENTER);
-        detail.setTextSize(50f);
-
-        // Fundo arredondado verde.
-        RectF bgRect = new RectF(8f, 8f, size - 8f, size - 8f);
-        canvas.drawRoundRect(bgRect, 42f, 42f, bg);
-
-        // Faixa diagonal discreta no canto, lembrando o app verde.
-        android.graphics.Path path = new android.graphics.Path();
-        path.moveTo(140f, size);
-        path.lineTo(size, size);
-        path.lineTo(size, 140f);
-        path.close();
-        canvas.drawPath(path, shade);
-
-        // Chip branco.
-        RectF body = new RectF(58f, 58f, 198f, 198f);
-        canvas.drawRoundRect(body, 24f, 24f, white);
-
-        // Pinos do chip.
-        float[] pinsX = {78f, 96f, 114f, 132f, 150f, 168f};
-        for (float x : pinsX) {
-            canvas.drawRoundRect(new RectF(x, 44f, x + 8f, 58f), 4f, 4f, white);
-            canvas.drawRoundRect(new RectF(x, 198f, x + 8f, 212f), 4f, 4f, white);
-        }
-        float[] pinsY = {78f, 96f, 114f, 132f, 150f, 168f};
-        for (float y : pinsY) {
-            canvas.drawRoundRect(new RectF(44f, y, 58f, y + 8f), 4f, 4f, white);
-            canvas.drawRoundRect(new RectF(198f, y, 212f, y + 8f), 4f, 4f, white);
-        }
-
-        // Núcleo interno.
-        RectF core = new RectF(84f, 84f, 172f, 172f);
-        canvas.drawRoundRect(core, 12f, 12f, detail);
-
-        // Texto CPU.
-        Paint.FontMetrics fm = detail.getFontMetrics();
-        float centerY = 128f - (fm.ascent + fm.descent) / 2f;
-        canvas.drawText("CPU", 128f, centerY, detail);
-
-        return bitmap;
     }
 
     private void createChannel() {
