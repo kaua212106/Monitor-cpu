@@ -8,7 +8,13 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.graphics.drawable.Icon;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -260,7 +266,7 @@ public class MonitorService extends Service {
         );
 
         Notification.Builder b = new Notification.Builder(this, CHANNEL)
-                .setSmallIcon(com.kaua.monitortermico.R.drawable.ic_launcher)
+                .setSmallIcon(buildCpuNotificationIcon())
                 .setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pi)
@@ -271,6 +277,104 @@ public class MonitorService extends Service {
                 .setStyle(new Notification.BigTextStyle().bigText(big));
 
         return b.build();
+    }
+
+
+    /**
+     * Cria em tempo de execução um small icon próprio para a notificação.
+     *
+     * O Android usa somente a máscara/alpha do small icon e aplica a cor do
+     * sistema. Por isso o desenho é branco sobre fundo totalmente transparente.
+     * Isso evita o "quadrado" causado por usar o ícone normal do aplicativo.
+     *
+     * O desenho reproduz a ideia do ícone enviado pelo usuário:
+     * microchip com pinos, núcleo central e CPU no meio.
+     */
+    private Icon buildCpuNotificationIcon() {
+        final int size = 128;
+
+        Bitmap bitmap = Bitmap.createBitmap(
+                size,
+                size,
+                Bitmap.Config.ARGB_8888
+        );
+
+        Canvas canvas = new Canvas(bitmap);
+
+        Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        stroke.setColor(Color.WHITE);
+        stroke.setStyle(Paint.Style.STROKE);
+        stroke.setStrokeWidth(8f);
+        stroke.setStrokeCap(Paint.Cap.ROUND);
+        stroke.setStrokeJoin(Paint.Join.ROUND);
+
+        // Corpo principal do chip.
+        RectF body = new RectF(27f, 27f, 101f, 101f);
+        canvas.drawRoundRect(body, 14f, 14f, stroke);
+
+        // Núcleo interno.
+        RectF core = new RectF(43f, 43f, 85f, 85f);
+        canvas.drawRect(core, stroke);
+
+        // Pinos superiores e inferiores.
+        float[] pinsX = {39f, 55f, 73f, 89f};
+        float[] topLengths = {12f, 18f, 12f, 8f};
+        float[] bottomLengths = {12f, 18f, 12f, 8f};
+
+        for (int i = 0; i < pinsX.length; i++) {
+            canvas.drawLine(
+                    pinsX[i],
+                    22f,
+                    pinsX[i],
+                    22f - topLengths[i],
+                    stroke
+            );
+
+            canvas.drawLine(
+                    pinsX[i],
+                    106f,
+                    pinsX[i],
+                    106f + bottomLengths[i],
+                    stroke
+            );
+        }
+
+        // Pinos laterais.
+        float[] pinsY = {39f, 55f, 73f, 89f};
+        float[] sideLengths = {12f, 18f, 12f, 8f};
+
+        for (int i = 0; i < pinsY.length; i++) {
+            canvas.drawLine(
+                    22f,
+                    pinsY[i],
+                    22f - sideLengths[i],
+                    pinsY[i],
+                    stroke
+            );
+
+            canvas.drawLine(
+                    106f,
+                    pinsY[i],
+                    106f + sideLengths[i],
+                    pinsY[i],
+                    stroke
+            );
+        }
+
+        // "CPU" no centro. Em telas muito pequenas o sistema pode simplificar
+        // visualmente, mas no painel expandido continua reconhecível.
+        Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+        text.setColor(Color.WHITE);
+        text.setStyle(Paint.Style.FILL);
+        text.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        text.setTextAlign(Paint.Align.CENTER);
+        text.setTextSize(19f);
+
+        Paint.FontMetrics fm = text.getFontMetrics();
+        float centerY = 64f - (fm.ascent + fm.descent) / 2f;
+        canvas.drawText("CPU", 64f, centerY, text);
+
+        return Icon.createWithBitmap(bitmap);
     }
 
     private void createChannel() {
