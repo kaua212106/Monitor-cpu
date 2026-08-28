@@ -1,0 +1,158 @@
+name: Build Monitor Termico V5
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar arquivos do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        shell: bash
+        run: |
+          set -e
+          sdkmanager --version
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Validar arquivos
+        shell: bash
+        run: |
+          set -e
+
+          ARQUIVOS=(
+            "app-build.gradle"
+            "AndroidManifest.xml"
+            "MainActivity.java"
+            "MonitorService.java"
+            "ThermalReader.java"
+            "index.html"
+            "ic_launcher.xml"
+            "settings.gradle"
+            "build.gradle"
+            "gradle.properties"
+          )
+
+          for arquivo in "${ARQUIVOS[@]}"; do
+            if [ ! -f "$arquivo" ]; then
+              echo "ERRO: arquivo ausente: $arquivo"
+              exit 1
+            fi
+
+            if [ ! -s "$arquivo" ]; then
+              echo "ERRO: arquivo vazio: $arquivo"
+              exit 1
+            fi
+
+            echo "OK: $arquivo"
+          done
+
+      - name: Montar estrutura Android
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf app
+
+          mkdir -p app/src/main/java/com/kaua/monitortermico
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/values
+
+          cp app-build.gradle app/build.gradle
+          cp AndroidManifest.xml app/src/main/AndroidManifest.xml
+
+          cp MainActivity.java \
+            app/src/main/java/com/kaua/monitortermico/MainActivity.java
+
+          cp MonitorService.java \
+            app/src/main/java/com/kaua/monitortermico/MonitorService.java
+
+          cp ThermalReader.java \
+            app/src/main/java/com/kaua/monitortermico/ThermalReader.java
+
+          cp index.html app/src/main/assets/index.html
+
+          cp ic_launcher.xml \
+            app/src/main/res/drawable/ic_launcher.xml
+
+          cat > app/src/main/res/values/styles.xml <<'STYLES'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowActionModeOverlay">true</item>
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="android:statusBarColor">#000000</item>
+                  <item name="android:navigationBarColor">#000000</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowLightNavigationBar">false</item>
+                  <item name="android:windowBackground">#000000</item>
+              </style>
+          </resources>
+          STYLES
+
+          touch app/proguard-rules.pro
+
+          if [ -s "proguard-rules.pro" ]; then
+            cp proguard-rules.pro app/proguard-rules.pro
+          fi
+
+          echo "Estrutura Android criada."
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar APK
+        shell: bash
+        run: |
+          set -e
+          gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verificar APK
+        shell: bash
+        run: |
+          set -e
+
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -s "$APK" ]; then
+            echo "ERRO: APK nao foi encontrado ou esta vazio."
+            find app/build -type f -print || true
+            exit 1
+          fi
+
+          cp "$APK" "Monitor-Termico-POCO-X8-Pro-V5.apk"
+
+          ls -lh "Monitor-Termico-POCO-X8-Pro-V5.apk"
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Monitor-Termico-POCO-X8-Pro-V5
+          path: Monitor-Termico-POCO-X8-Pro-V5.apk
+          if-no-files-found: error
+          retention-days: 30
