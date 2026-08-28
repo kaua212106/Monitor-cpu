@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Monitor Térmico</title>
+<style>
+:root{
+  color-scheme:light;
+  --g1:#667eea;--g2:#7651d9;--g3:#4f63d7;
+  --card:#f9f9fc;--card2:#f2f1f8;--ink:#252938;--muted:#74798a;
+  --line:#e6e5ee;--blue:#6686ea;--green:#2eae7f;--orange:#df941f;--red:#dc5a63;
+  --shadow:0 8px 24px rgba(41,36,91,.14);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#675dde}
+body{padding:env(safe-area-inset-top) 0 calc(92px + env(safe-area-inset-bottom));overflow-x:hidden}
+body:before,body:after{content:"";position:fixed;border-radius:50%;pointer-events:none;opacity:.15;z-index:0}
+body:before{width:330px;height:330px;right:-160px;top:130px;background:#fff}
+body:after{width:260px;height:260px;left:-150px;bottom:130px;border:1px solid #fff}
+.bg{position:fixed;inset:0;background:linear-gradient(150deg,#788df0 0%,#7154db 48%,#5140b9 100%);z-index:-2}
+.bg:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 16%,rgba(255,255,255,.23),transparent 26%),radial-gradient(circle at 82% 65%,rgba(255,255,255,.10),transparent 30%)}
+.app{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:14px 14px 26px}
+.header{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:10px;color:#fff;margin-bottom:18px}
+.iconBtn{width:48px;height:48px;border:0;border-radius:16px;background:rgba(255,255,255,.95);color:#384052;font-size:25px;font-weight:800;box-shadow:0 5px 16px rgba(34,26,97,.16);display:grid;place-items:center}
+.brand{text-align:center;min-width:0}.brandTitle{font-size:21px;font-weight:850;letter-spacing:-.5px}.brandSub{font-size:11px;opacity:.86;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page{display:none}.page.active{display:block}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:rgba(250,250,253,.97);border:1px solid rgba(255,255,255,.55);border-radius:24px;box-shadow:var(--shadow)}
+.tempCard{min-height:168px;padding:17px;position:relative;overflow:hidden}.tempCard:before{content:"";position:absolute;left:18px;right:18px;top:0;height:4px;border-radius:0 0 8px 8px;background:var(--blue)}.tempCard.bat:before{background:#70cda9}
+.kicker{font-size:11px;color:#727687;font-weight:850;text-transform:uppercase;letter-spacing:.5px}.temp{font-size:42px;font-weight:900;letter-spacing:-2px;margin:12px 0 6px}.temp small{font-size:17px;letter-spacing:-.3px}.good{color:var(--green)}.warn{color:var(--orange)}.hot,.bad{color:var(--red)}
+.status{font-size:12px;color:var(--muted);line-height:1.35}.tiny{font-size:10px;color:#9699a6;margin-top:13px;border-top:1px solid var(--line);padding-top:10px;line-height:1.35}
+.section{margin-top:14px;padding:18px}.sectionTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:17px;font-weight:850;margin-bottom:11px}.subtext{font-size:12px;line-height:1.45;color:var(--muted)}
+.chip{font-size:10px;font-weight:800;padding:6px 9px;border-radius:999px;background:#ececff;color:#5b58ba;white-space:nowrap}.chip.green{background:#e5f6ef;color:#2e936e}.chip.orange{background:#fff1dc;color:#b97816}
+.quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.mini{background:#f2f1f7;border-radius:17px;padding:13px}.mini .label{font-size:10px;color:var(--muted)}.mini .value{font-size:17px;font-weight:850;margin-top:4px}
+.btnRow{display:flex;gap:10px;margin-top:13px}.btn{border:0;border-radius:16px;min-height:48px;padding:0 17px;font-size:14px;font-weight:850;background:#83acf6;color:#192438;flex:1}.btn.secondary{background:#f0eff6;color:#333746;border:1px solid #e2e0eb}.btn.danger{background:#f4e9ec;color:#a34854}.btn:disabled{opacity:.45}
+.notice{display:flex;gap:10px;align-items:flex-start;background:#f7f5ff;border:1px solid #e2defb;border-radius:18px;padding:13px;margin-top:12px}.noticeIcon{font-size:20px}.notice b{font-size:13px}.notice p{font-size:11px;color:var(--muted);margin:3px 0 0;line-height:1.4}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#f3f2f8;border-radius:17px;padding:14px}.stat span{font-size:10px;color:var(--muted)}.stat b{display:block;font-size:20px;margin-top:5px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f4f3f8;border-radius:16px;padding:13px}.metric .lab{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.3px}.metric .val{font-size:15px;font-weight:850;margin-top:5px;overflow-wrap:anywhere}
+.list{overflow:hidden;border:1px solid var(--line);border-radius:18px;background:#fff}.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 13px;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}.rowMain{min-width:0}.rowName{font-size:12px;font-weight:800;overflow-wrap:anywhere}.rowMeta{font-size:9px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}.rowVal{font-size:12px;font-weight:850;white-space:nowrap}.empty{padding:18px;text-align:center;color:var(--muted);font-size:11px}
+.formGroup{margin-top:14px}.formLabel{display:block;font-size:12px;font-weight:800;margin-bottom:7px}.input,.select{width:100%;min-height:48px;border:1px solid #dfdeea;background:#f5f4f9;color:var(--ink);border-radius:15px;padding:0 13px;font-size:16px;outline:none}.select{font-size:14px}
+.switchRow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}.switchRow:last-child{border-bottom:0}.switchText b{display:block;font-size:13px}.switchText span{display:block;font-size:10px;color:var(--muted);margin-top:3px;line-height:1.35}
+.switch{position:relative;width:49px;height:29px;flex:0 0 auto}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;border-radius:99px;background:#d8d8e1;transition:.18s}.slider:before{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.18s}.switch input:checked+.slider{background:#6e83e8}.switch input:checked+.slider:before{transform:translateX(20px)}
+.rangeWrap{display:flex;align-items:center;gap:12px}.rangeWrap input{flex:1}.rangeVal{min-width:45px;text-align:right;font-size:12px;font-weight:800}
+.permissionBox{background:#fff7e8;border:1px solid #f3dcaa;border-radius:16px;padding:12px;margin-top:12px;font-size:11px;color:#775a22;line-height:1.4}.permissionBox.ok{background:#eaf8f1;border-color:#bce8d4;color:#277658}
+.preview{display:flex;align-items:center;justify-content:center;min-height:100px;background:linear-gradient(140deg,#e7e9f6,#d5d7e7);border-radius:18px;margin-top:12px;position:relative;overflow:hidden}.floatPreview{min-width:62px;min-height:54px;border-radius:17px;background:#1c1d22;color:white;display:grid;place-items:center;padding:7px 10px;font-weight:850;box-shadow:0 6px 14px rgba(0,0,0,.2)}
+.bottomNav{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));width:min(720px,calc(100% - 24px));height:72px;background:rgba(251,250,253,.96);border:1px solid rgba(255,255,255,.8);border-radius:25px;box-shadow:0 8px 28px rgba(40,31,99,.20);display:grid;grid-template-columns:repeat(4,1fr);padding:7px;backdrop-filter:blur(12px)}
+.navBtn{border:0;background:transparent;border-radius:18px;color:#858999;font-size:10px;font-weight:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.navBtn .ico{font-size:21px}.navBtn.active{background:#efeffb;color:#5b69c6}.navBtn.active:after{content:"";width:24px;height:3px;border-radius:99px;background:#7588e9}
+.drawerShade{position:fixed;inset:0;background:rgba(25,24,42,.35);z-index:40;display:none}.drawerShade.show{display:block}.drawer{position:absolute;left:0;top:0;bottom:0;width:min(310px,82vw);background:#faf9fd;padding:calc(22px + env(safe-area-inset-top)) 18px 25px;box-shadow:10px 0 35px rgba(24,19,66,.25)}.drawerTitle{font-size:20px;font-weight:900}.drawerSub{font-size:11px;color:var(--muted);margin:5px 0 20px}.drawerBtn{width:100%;min-height:50px;border:0;background:#f0eff7;border-radius:15px;margin-bottom:8px;text-align:left;padding:0 14px;font-weight:800;color:#343746}.drawerFoot{font-size:10px;color:var(--muted);position:absolute;left:18px;right:18px;bottom:22px;line-height:1.4}
+.toast{position:fixed;z-index:60;left:50%;transform:translateX(-50%) translateY(20px);bottom:100px;background:#292b37;color:#fff;padding:10px 14px;border-radius:14px;font-size:11px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100% - 40px);text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.pageHead{color:#fff;margin:4px 4px 12px}.pageHead h2{font-size:23px;margin:0;font-weight:900}.pageHead p{font-size:11px;margin:4px 0 0;opacity:.86}
+@media(max-width:390px){.hero{gap:9px}.tempCard{padding:14px;min-height:160px}.temp{font-size:35px}.section{padding:15px}.brandTitle{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="app">
+  <header class="header">
+    <button class="iconBtn" id="menuBtn" aria-label="Menu">☰</button>
+    <div class="brand"><div class="brandTitle">🌡️ Monitor Térmico</div><div class="brandSub" id="device">Lendo sensores…</div></div>
+    <button class="iconBtn" id="settingsBtn" aria-label="Ajustes">⚙</button>
+  </header>
+
+  <main class="page active" id="page-home">
+    <div class="hero">
+      <section class="card tempCard">
+        <div class="kicker">Processador / SoC</div>
+        <div class="temp" id="cpuTemp">--<small> °C</small></div>
+        <div class="status" id="cpuStatus">Calculando…</div>
+        <div class="tiny" id="cpuSensor"></div>
+      </section>
+      <section class="card tempCard bat">
+        <div class="kicker">Bateria</div>
+        <div class="temp" id="batteryTemp">--<small> °C</small></div>
+        <div class="status" id="batteryStatus">Lendo bateria…</div>
+        <div class="tiny" id="batteryDetail"></div>
+      </section>
+    </div>
+
+    <section class="card section">
+      <div class="sectionTitle"><span>Agora</span><span class="chip green" id="thermalStatus">--</span></div>
+      <div class="quick">
+        <div class="mini"><div class="label">Thermal headroom</div><div class="value" id="headroom">--</div></div>
+        <div class="mini"><div class="label">Frequência CPU</div><div class="value" id="cpuLoad">--</div></div>
+        <div class="mini"><div class="label">Corrente</div><div class="value" id="current">--</div></div>
+        <div class="mini"><div class="label">Potência</div><div class="value" id="power">--</div></div>
+      </div>
+      <div class="notice">
+        <div class="noticeIcon">🔥</div>
+        <div><b id="directState">CPU: sensor + estimativa</b><p id="directText">O app tenta sensor real primeiro e usa estimativa quando o HyperOS bloqueia a leitura.</p></div>
+      </div>
+      <div class="btnRow"><button class="btn secondary" id="rescanBtn">Reexaminar sensores</button></div>
+    </section>
+
+    <section class="card section">
+      <div class="sectionTitle"><span>Modo Sessão / Jogo</span><span class="chip" id="sessionChip">Parado</span></div>
+      <div class="subtext" id="sessionInfo">Registra os máximos enquanto você usa outro app.</div>
+      <div class="btnRow"><button class="btn" id="startBtn">▶ Iniciar sessão</button><button class="btn danger" id="stopBtn">Parar</button></div>
+    </section>
+  </main>
+
+  <main class="page" id="page-session">
+    <div class="pageHead"><h2>Sessão / Jogo</h2><p>Acompanhe os maiores valores registrados durante o uso.</p></div>
+    <section class="card section" style="margin-top:0">
+      <div class="sectionTitle"><span>Resumo da sessão</span><span class="chip" id="sessionChip2">Parado</span></div>
+      <div class="subtext" id="sessionInfo2">Nenhuma sessão ativa.</div>
+      <div class="stats" style="margin-top:14px">
+        <div class="stat"><span>CPU máxima</span><b id="maxCpu">--</b></div>
+        <div class="stat"><span>Bateria máxima</span><b id="maxBatt">--</b></div>
+        <div class="stat"><span>GPU máxima</span><b id="maxGpu">--</b></div>
+        <div class="stat"><span>Pressão máxima</span><b id="maxHead">--</b></div>
+      </div>
+      <div class="btnRow"><button class="btn" id="startBtn2">▶ Iniciar</button><button class="btn danger" id="stopBtn2">Parar</button></div>
+    </section>
+    <section class="card section">
+      <div class="sectionTitle"><span>Leitura atual</span><span class="chip green" id="liveTime">Ao vivo</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="lab">CPU</div><div class="val" id="sessionCpu">--</div></div>
+        <div class="metric"><div class="lab">Bateria</div><div class="val" id="sessionBattery">--</div></div>
+        <div class="metric"><div class="lab">GPU</div><div class="val" id="gpuTemp">--</div></div>
+        <div class="metric"><div class="lab">Estado</div><div class="val" id="sessionThermal">--</div></div>
+      </div>
+    </section>
+  </main>
+
+  <main class="page" id="page-sensors">
+    <div class="pageHead"><h2>Sensores</h2><p>Detalhes da bateria, núcleos e zonas térmicas disponíveis.</p></div>
+    <section class="card section" style="margin-top:0">
+      <div class="sectionTitle"><span>Bateria e sistema</span><span class="chip" id="batteryLevelChip">--</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="lab">Tensão</div><div class="val" id="voltage">--</div></div>
+        <div class="metric"><div class="lab">Carga restante</div><div class="val" id="charge">--</div></div>
+        <div class="metric"><div class="lab">Saúde</div><div class="val" id="health">--</div></div>
+        <div class="metric"><div class="lab">Conexão</div><div class="val" id="plugged">--</div></div>
+        <div class="metric"><div class="lab">Temperatura ambiente</div><div class="val" id="ambient">--</div></div>
+        <div class="metric"><div class="lab">Umidade</div><div class="val" id="humidity">--</div></div>
+        <div class="metric"><div class="lab">Luz ambiente</div><div class="val" id="light">--</div></div>
+        <div class="metric"><div class="lab">GPU</div><div class="val" id="gpuTemp2">--</div></div>
+      </div>
+    </section>
+    <section class="card section">
+      <div class="sectionTitle"><span>Frequência dos núcleos</span><span class="chip" id="coreCount">0</span></div>
+      <div class="list" id="cores"><div class="empty">Aguardando leitura…</div></div>
+    </section>
+    <section class="card section">
+      <div class="sectionTitle"><span>Zonas térmicas</span><span class="chip" id="zoneCount">0</span></div>
+      <div class="list" id="zones"><div class="empty">Buscando sensores…</div></div>
+    </section>
+  </main>
+
+  <main class="page" id="page-settings">
+    <div class="pageHead"><h2>Ajustes</h2><p>Personalize a notificação e o indicador de temperatura sobre outros apps.</p></div>
+
+    <section class="card section" style="margin-top:0">
+      <div class="sectionTitle"><span>🔔 Notificação térmica</span><span class="chip">Personalizável</span></div>
+      <div class="switchRow">
+        <div class="switchText"><b>Manter notificação ativa</b><span>Atualiza CPU e bateria mesmo fora do app.</span></div>
+        <label class="switch"><input type="checkbox" id="notificationEnabled"><span class="slider"></span></label>
+      </div>
+      <div class="formGroup"><label class="formLabel" for="notificationTitle">Título da notificação</label><input class="input" id="notificationTitle" maxlength="40" value="Monitor Térmico"></div>
+      <div class="formGroup"><label class="formLabel" for="notificationMetric">Informação principal</label><select class="select" id="notificationMetric"><option value="both">CPU + bateria</option><option value="cpu">Somente CPU</option><option value="battery">Somente bateria</option></select></div>
+      <div class="switchRow">
+        <div class="switchText"><b>Mostrar detalhes</b><span>Inclui porcentagem da bateria, frequência e aviso de estimativa.</span></div>
+        <label class="switch"><input type="checkbox" id="notificationDetails"><span class="slider"></span></label>
+      </div>
+      <div class="notice"><div class="noticeIcon">💡</div><div><b>Atualização discreta</b><p>A notificação usa baixa prioridade, sem som e sem vibrar.</p></div></div>
+    </section>
+
+    <section class="card section">
+      <div class="sectionTitle"><span>🌡️ Indicador flutuante</span><span class="chip" id="overlayPermissionChip">Permissão</span></div>
+      <div class="switchRow">
+        <div class="switchText"><b>Mostrar sobre outros apps</b><span>Cria a bolha de temperatura no canto da tela. Você pode arrastar para qualquer altura.</span></div>
+        <label class="switch"><input type="checkbox" id="overlayEnabled"><span class="slider"></span></label>
+      </div>
+      <div id="overlayPermissionBox" class="permissionBox">Para funcionar, o Android precisa autorizar “Exibir sobre outros apps”. Ao salvar, a tela de permissão será aberta se necessário.</div>
+      <div class="formGroup"><label class="formLabel" for="overlayMetric">Mostrar na bolha</label><select class="select" id="overlayMetric"><option value="cpu">CPU</option><option value="battery">Bateria</option><option value="both">CPU + bateria</option></select></div>
+      <div class="formGroup"><label class="formLabel" for="overlaySize">Tamanho</label><select class="select" id="overlaySize"><option value="small">Pequeno</option><option value="medium">Médio</option><option value="large">Grande</option></select></div>
+      <div class="formGroup"><label class="formLabel" for="overlayStyle">Estilo</label><select class="select" id="overlayStyle"><option value="dark">Escuro</option><option value="accent">Roxo / azul</option><option value="light">Claro</option></select></div>
+      <div class="formGroup"><label class="formLabel">Opacidade</label><div class="rangeWrap"><input type="range" min="45" max="100" value="92" id="overlayOpacity"><span class="rangeVal" id="overlayOpacityValue">92%</span></div></div>
+      <div class="preview"><div class="floatPreview" id="floatPreview">41°~</div></div>
+      <div class="subtext" style="margin-top:9px">O símbolo <b>~</b> aparece quando a CPU é estimada em vez de medida por um sensor físico. Toque na bolha para abrir o app.</div>
+    </section>
+
+    <section class="card section">
+      <button class="btn" id="saveSettingsBtn" style="width:100%">Salvar ajustes</button>
+      <div class="subtext" style="margin-top:10px">Se a bolha estiver ativa, o Android exige um serviço em primeiro plano e pode manter uma notificação mínima mesmo que a notificação personalizada esteja desligada.</div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottomNav" aria-label="Navegação">
+  <button class="navBtn active" data-page="home"><span class="ico">🏠</span><span>Hoje</span></button>
+  <button class="navBtn" data-page="session"><span class="ico">🎮</span><span>Sessão</span></button>
+  <button class="navBtn" data-page="sensors"><span class="ico">📊</span><span>Sensores</span></button>
+  <button class="navBtn" data-page="settings"><span class="ico">⚙️</span><span>Ajustes</span></button>
+</nav>
+
+<div class="drawerShade" id="drawerShade">
+  <aside class="drawer" role="dialog" aria-label="Menu">
+    <div class="drawerTitle">Monitor Térmico</div><div class="drawerSub">CPU, bateria e sensores do aparelho.</div>
+    <button class="drawerBtn" data-go="home">🏠 Visão geral</button>
+    <button class="drawerBtn" data-go="session">🎮 Modo Sessão / Jogo</button>
+    <button class="drawerBtn" data-go="sensors">📊 Todos os sensores</button>
+    <button class="drawerBtn" data-go="settings">⚙️ Notificação e bolha</button>
+    <div class="drawerFoot">V6 • Sem Shizuku • CPU real quando disponível e estimativa identificada quando o HyperOS bloqueia o sensor.</div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $=id=>document.getElementById(id), native=()=>typeof Native!=='undefined';
+  const safeParse=s=>{try{return JSON.parse(s||'{}')}catch(e){return {}}};
+  const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  let lastSnapshot={}, lastSession={}, settingsLoaded=false, settingsDirty=false, toastTimer;
+
+  const tempClass=(t,b=false)=>t==null?'':b?(t>=45?'bad':t>=40?'warn':'good'):(t>=80?'bad':t>=65?'warn':'good');
+  const tempHtml=v=>v==null?'--<small> °C</small>':`${Number(v).toFixed(1)}<small> °C</small>`;
+  function setTemp(el,v,b=false){el.innerHTML=tempHtml(v);el.className='temp '+tempClass(v,b)}
+  function toast(msg){const t=$('toast');t.textContent=msg;clearTimeout(toastTimer);t.classList.add('show');toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
+
+  function go(page){
+    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===`page-${page}`));
+    document.querySelectorAll('.navBtn').forEach(x=>x.classList.toggle('active',x.dataset.page===page));
+    $('drawerShade').classList.remove('show');
+    if(page==='settings') loadSettings(false);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  document.querySelectorAll('.navBtn').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page)));
+  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+  $('settingsBtn').addEventListener('click',()=>go('settings'));
+  $('menuBtn').addEventListener('click',()=>$('drawerShade').classList.add('show'));
+  $('drawerShade').addEventListener('click',e=>{if(e.target===$('drawerShade'))$('drawerShade').classList.remove('show')});
+
+  function renderSnapshot(d){
+    lastSnapshot=d||{};
+    const b=d.battery||{}, cpu=d.cpu||{}, gpu=d.gpu||{}, th=d.systemThermal||{}, env=d.environment||{};
+    $('device').textContent=`${d.device||'Android'} • Android ${d.android||''}`;
+    setTemp($('cpuTemp'),cpu.temperatureC);setTemp($('batteryTemp'),b.temperatureC,true);
+    $('cpuStatus').textContent=cpu.temperatureC==null?'Temperatura indisponível':cpu.estimated?'Estimativa da CPU':'Leitura de sensor térmico';
+    $('cpuSensor').textContent=cpu.temperatureC==null?'Ainda sem dados.':cpu.estimated?`Bateria + frequência • ${cpu.frequencyPercent!=null?Math.round(cpu.frequencyPercent)+'%':'frequência indisponível'}`:`${cpu.sensor||'CPU/SoC'}${cpu.probable?' • provável':''}`;
+    $('batteryStatus').textContent=`${b.levelPct!=null?b.levelPct+'% • ':''}${b.status||'--'}`;
+    $('batteryDetail').textContent=[b.technology,b.plugged].filter(Boolean).join(' • ');
+    $('thermalStatus').textContent=th.status||'--';
+    $('thermalStatus').className='chip '+((th.statusCode||0)>=2?'orange':'green');
+    $('headroom').textContent=th.headroom!=null?Number(th.headroom).toFixed(2):'--';
+    $('current').textContent=b.currentA!=null?Number(b.currentA).toFixed(2)+' A':'--';
+    $('power').textContent=b.powerW!=null?Number(b.powerW).toFixed(2)+' W':'--';
+    $('cpuLoad').textContent=cpu.frequencyPercent!=null?Math.round(cpu.frequencyPercent)+'%':'--';
+
+    const p=d.directProbe||{}, readable=Number(p.readablePaths||0);
+    if(cpu.estimated){$('directState').textContent='Estimativa ativa';$('directText').textContent='O HyperOS bloqueou o sensor físico. O valor usa bateria + frequência da CPU e fica marcado como estimado.'}
+    else if(cpu.temperatureC!=null){$('directState').textContent='Sensor real ativo';$('directText').textContent=`Leitura direta disponível${readable?` • ${readable} caminho(s) legível(is)`:''}.`}
+    else{$('directState').textContent='CPU indisponível';$('directText').textContent='Não foi possível obter sensor nem estimativa nesta leitura.'}
+
+    $('sessionCpu').textContent=cpu.temperatureC!=null?Number(cpu.temperatureC).toFixed(1)+' °C':'--';
+    $('sessionBattery').textContent=b.temperatureC!=null?Number(b.temperatureC).toFixed(1)+' °C':'--';
+    $('gpuTemp').textContent=gpu.temperatureC!=null?Number(gpu.temperatureC).toFixed(1)+' °C':'Indisponível';
+    $('gpuTemp2').textContent=gpu.temperatureC!=null?Number(gpu.temperatureC).toFixed(1)+' °C':'Indisponível';
+    $('sessionThermal').textContent=th.status||'--';
+    $('liveTime').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+    $('voltage').textContent=b.voltageV!=null?Number(b.voltageV).toFixed(3)+' V':'--';
+    $('charge').textContent=b.chargeRemainingMah!=null?Math.round(b.chargeRemainingMah)+' mAh':'--';
+    $('health').textContent=b.health||'--';$('plugged').textContent=b.plugged||'--';
+    $('batteryLevelChip').textContent=b.levelPct!=null?b.levelPct+'%':'--';
+    $('ambient').textContent=env.temperatureC!=null?env.temperatureC+' °C':'Não disponível';
+    $('humidity').textContent=env.humidityPct!=null?env.humidityPct+'%':'Não disponível';
+    $('light').textContent=env.lightLux!=null?env.lightLux+' lux':'Não disponível';
+
+    const cores=Array.isArray(cpu.cores)?cpu.cores:[];
+    $('coreCount').textContent=`${cores.length} núcleo${cores.length===1?'':'s'}`;
+    $('cores').innerHTML=cores.length?cores.map(c=>`<div class="row"><div class="rowMain"><div class="rowName">${esc(c.core)}</div><div class="rowMeta">Máx. ${c.maxMHz?c.maxMHz+' MHz':'indisponível'}</div></div><div class="rowVal">${c.currentMHz?c.currentMHz+' MHz':'--'}</div></div>`).join(''):'<div class="empty">Frequências não expostas.</div>';
+    const zones=Array.isArray(d.thermalZones)?d.thermalZones:[];
+    $('zoneCount').textContent=zones.length;
+    $('zones').innerHTML=zones.length?zones.map(z=>`<div class="row"><div class="rowMain"><div class="rowName">${esc(z.name)}</div><div class="rowMeta">${esc(z.category||'Outro')} • ${esc(z.source||'sensor')}</div></div><div class="rowVal ${tempClass(z.temperatureC)}">${Number(z.temperatureC).toFixed(1)} °C</div></div>`).join(''):'<div class="empty">Nenhuma zona térmica interna legível.</div>';
+
+    updatePreview();
+  }
+
+  function renderSession(s){
+    lastSession=s||{};const running=!!s.running;
+    ['startBtn','startBtn2'].forEach(id=>$(id).disabled=running);['stopBtn','stopBtn2'].forEach(id=>$(id).disabled=!running);
+    let text='Registra os máximos enquanto você usa outro app.';
+    if(running&&s.startedAt){const sec=Math.max(0,Math.floor((Date.now()-s.startedAt)/1000));text=`Sessão ativa • ${fmtDuration(sec)} • ${s.samples||0} amostras`}
+    else if(!running&&s.startedAt){const end=s.endedAt||Date.now(),sec=Math.max(0,Math.floor((end-s.startedAt)/1000));text=`Última sessão • ${fmtDuration(sec)} • ${s.samples||0} amostras`}
+    $('sessionInfo').textContent=text;$('sessionInfo2').textContent=text;
+    $('sessionChip').textContent=running?'Ativa':'Parado';$('sessionChip2').textContent=running?'Ativa':'Parado';
+    $('sessionChip').className='chip '+(running?'green':'');$('sessionChip2').className='chip '+(running?'green':'');
+    $('maxCpu').textContent=s.maxCpu!=null?Number(s.maxCpu).toFixed(1)+'°C':'--';
+    $('maxBatt').textContent=s.maxBattery!=null?Number(s.maxBattery).toFixed(1)+'°C':'--';
+    $('maxGpu').textContent=s.maxGpu!=null?Number(s.maxGpu).toFixed(1)+'°C':'--';
+    $('maxHead').textContent=s.maxHeadroom!=null?Number(s.maxHeadroom).toFixed(2):'--';
+  }
+  function fmtDuration(sec){const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h?`${h}h ${m}m`:m?`${m}m ${s}s`:`${s}s`}
+
+  function refresh(){if(!native())return;try{renderSnapshot(safeParse(Native.getSnapshot()));renderSession(safeParse(Native.getSessionStats()))}catch(e){}}
+  function startSession(){if(native()){Native.startSession();setTimeout(refresh,450)}}
+  function stopSession(){if(native()){Native.stopSession();setTimeout(refresh,450)}}
+  ['startBtn','startBtn2'].forEach(id=>$(id).addEventListener('click',startSession));['stopBtn','stopBtn2'].forEach(id=>$(id).addEventListener('click',stopSession));
+  $('rescanBtn').addEventListener('click',()=>{if(native()){Native.forceRescan();$('directState').textContent='Reexaminando…';setTimeout(refresh,350)}});
+
+  const settingIds=['notificationEnabled','notificationTitle','notificationMetric','notificationDetails','overlayEnabled','overlayMetric','overlaySize','overlayStyle','overlayOpacity'];
+  settingIds.forEach(id=>$(id).addEventListener('input',()=>{settingsDirty=true;updatePreview()}));
+  $('overlayOpacity').addEventListener('input',()=>{$('overlayOpacityValue').textContent=$('overlayOpacity').value+'%'});
+
+  function loadSettings(force=true){
+    if(!native())return;
+    try{
+      const s=safeParse(Native.getDisplaySettings());
+      if(force||!settingsDirty){
+        $('notificationEnabled').checked=!!s.notificationEnabled;$('notificationTitle').value=s.notificationTitle||'Monitor Térmico';$('notificationMetric').value=s.notificationMetric||'both';$('notificationDetails').checked=s.notificationDetails!==false;
+        $('overlayEnabled').checked=!!s.overlayEnabled;$('overlayMetric').value=s.overlayMetric||'cpu';$('overlaySize').value=s.overlaySize||'medium';$('overlayStyle').value=s.overlayStyle||'dark';$('overlayOpacity').value=s.overlayOpacity||92;$('overlayOpacityValue').textContent=($('overlayOpacity').value)+'%';
+        settingsLoaded=true;settingsDirty=false;
+      }
+      renderOverlayPermission(!!s.overlayPermission);
+      updatePreview();
+    }catch(e){}
+  }
+  function renderOverlayPermission(ok){
+    $('overlayPermissionChip').textContent=ok?'Permitido':'Permissão';$('overlayPermissionChip').className='chip '+(ok?'green':'orange');
+    const box=$('overlayPermissionBox');box.className='permissionBox '+(ok?'ok':'');box.textContent=ok?'Permissão “Exibir sobre outros apps” concedida. A bolha pode aparecer em qualquer aplicativo.':'Para funcionar, o Android precisa autorizar “Exibir sobre outros apps”. Ao salvar com a bolha ativada, a tela de permissão será aberta.';
+  }
+  function updatePreview(){
+    const cpu=lastSnapshot.cpu||{},b=lastSnapshot.battery||{},metric=$('overlayMetric').value||'cpu',style=$('overlayStyle').value||'dark',size=$('overlaySize').value||'medium',opacity=Number($('overlayOpacity').value||92)/100;
+    const f=$('floatPreview'),cpuT=cpu.temperatureC!=null?Math.round(cpu.temperatureC):41,batT=b.temperatureC!=null?Math.round(b.temperatureC):35;
+    f.textContent=metric==='battery'?`${batT}°`:metric==='both'?`CPU ${cpuT}°\nBAT ${batT}°`:`${cpuT}°${cpu.estimated?'~':''}`;f.style.whiteSpace='pre-line';f.style.opacity=opacity;
+    f.style.background=style==='accent'?'#667eea':style==='light'?'#fff':'#1c1d22';f.style.color=style==='light'?'#272a38':'#fff';f.style.fontSize=size==='small'?'14px':size==='large'?'22px':'18px';f.style.padding=size==='large'?'12px 16px':size==='small'?'6px 8px':'8px 11px';
+  }
+  $('saveSettingsBtn').addEventListener('click',()=>{
+    if(!native())return;
+    const data={notificationEnabled:$('notificationEnabled').checked,notificationTitle:$('notificationTitle').value,notificationMetric:$('notificationMetric').value,notificationDetails:$('notificationDetails').checked,overlayEnabled:$('overlayEnabled').checked,overlayMetric:$('overlayMetric').value,overlaySize:$('overlaySize').value,overlayStyle:$('overlayStyle').value,overlayOpacity:Number($('overlayOpacity').value)};
+    const r=safeParse(Native.saveDisplaySettings(JSON.stringify(data)));settingsDirty=false;
+    if(r.needsOverlayPermission){toast('Autorize “Exibir sobre outros apps” e volte para o Monitor Térmico.')}else{toast('Ajustes salvos.')}setTimeout(()=>loadSettings(true),500);
+  });
+
+  window.onNativeResume=()=>{refresh();setTimeout(()=>loadSettings(false),250)};
+  refresh();loadSettings(true);setInterval(refresh,2000);
+})();
+</script>
+</body>
+</html>

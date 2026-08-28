@@ -1,21 +1,17 @@
-# Monitor Térmico V5.1 — fallback sem Shizuku
+# Monitor Térmico V6
 
-Esta atualização foi feita após analisar o APK de referência enviado pelo usuário.
+Atualização visual e de exibição em segundo plano.
 
-## Descoberta importante
+## Novidades
+- Interface no mesmo estilo visual dos outros apps: gradiente roxo/azul, cartões claros arredondados e navegação inferior.
+- Notificação térmica personalizável com título, CPU/bateria e detalhes opcionais.
+- Indicador flutuante sobre outros apps, arrastável e com CPU, bateria ou ambos.
+- Tamanho, estilo e opacidade do indicador configuráveis.
+- Toque na bolha para abrir o Monitor Térmico.
+- CPU continua usando sensor real quando disponível; quando o HyperOS bloqueia o sensor, a estimativa é marcada com `~`.
 
-O app de referência primeiro tenta ler arquivos térmicos do sistema diretamente.
-Quando nenhum deles funciona, ele não fica necessariamente sem temperatura:
-ele calcula um valor aproximado usando a temperatura da bateria e a relação entre
-a frequência atual e a frequência máxima da CPU.
+## Permissão do indicador flutuante
+O Android exige a permissão especial “Exibir sobre outros apps”. O próprio app abre a tela correta quando a bolha é ativada.
 
-A V5.1 implementa um fallback equivalente, mas identifica claramente o resultado
-como **estimativa**, para não confundir com um sensor físico real.
-
-## Ordem de leitura
-
-1. Sensor real identificado de CPU/SoC.
-2. Thermal zone legível sem nome, marcado como provável.
-3. Estimativa por bateria + frequência, marcada como estimada.
-
-Não usa Shizuku e não requer root.
+## Observação
+Enquanto a bolha estiver ativa, o Android exige um serviço em primeiro plano. Por isso pode existir uma notificação mínima mesmo quando a notificação térmica personalizada estiver desligada.
