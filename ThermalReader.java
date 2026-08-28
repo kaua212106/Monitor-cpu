@@ -35,6 +35,18 @@ public final class ThermalReader {
 
     private static final String[] LEGACY_CPU_PATHS = new String[]{
             "/sys/class/hwmon/hwmon0/device/temp1_input",
+            "/sys/class/i2c-adapter/i2c-4/4-004c/temperature",
+
+            "/sys/class/thermal/thermal_zone0/temp",
+            "/sys/class/thermal/thermal_zone1/temp",
+            "/sys/class/thermal/thermal_zone2/temp",
+            "/sys/class/thermal/thermal_zone3/temp",
+
+            "/sys/devices/virtual/thermal/thermal_zone0/temp",
+            "/sys/devices/virtual/thermal/thermal_zone1/temp",
+            "/sys/devices/virtual/thermal/thermal_zone2/temp",
+            "/sys/devices/virtual/thermal/thermal_zone3/temp",
+
             "/sys/devices/system/cpu/cpu0/cpufreq/cpu_temp",
             "/sys/devices/system/cpu/cpu1/cpufreq/cpu_temp",
             "/sys/devices/system/cpu/cpu2/cpufreq/cpu_temp",
@@ -44,12 +56,20 @@ public final class ThermalReader {
             "/sys/devices/system/cpu/cpu6/cpufreq/cpu_temp",
             "/sys/devices/system/cpu/cpu7/cpufreq/cpu_temp",
             "/sys/devices/system/cpu/cpu0/cpufreq/FakeShmoo_cpu_temp",
-            "/sys/htc/cpu_temp",
-            "/sys/devices/platform/tegra_tmon/temp1_input",
+
+            "/sys/devices/platform/omap/omap_temp_sensor.0/temperature",
+            "/sys/devices/platform/s5p-tmu/curr_temp",
+            "/sys/devices/platform/s5p-tmu/temperature",
+            "/sys/devices/platform/tegra-i2c.3/i2c-4/4-004c/ext_temperature",
+            "/sys/devices/platform/tegra-i2c.3/i2c-4/4-004c/temperature",
             "/sys/devices/platform/tegra-thermal/thermal_zone0/temp",
             "/sys/devices/platform/tegra-thermal/thermal_zone1/temp",
             "/sys/devices/platform/tegra-thermal/thermal_zone2/temp",
-            "/sys/devices/platform/tegra-thermal/thermal_zone3/temp"
+            "/sys/devices/platform/tegra-thermal/thermal_zone3/temp",
+            "/sys/devices/platform/tegra-tsensor/tsensor_temperature",
+            "/sys/devices/platform/tegra_tmon/temp1_input",
+            "/sys/kernel/debug/tegra_thermal/temp_tj",
+            "/sys/htc/cpu_temp"
     };
 
     public static void forceRescan() {
@@ -192,7 +212,7 @@ public final class ThermalReader {
         try {
             ThermalZone best = null;
 
-            // 1) Caminho explicitamente de CPU, como os usados por apps de monitoramento.
+            // 1) Prioridade máxima: um sensor real identificado como CPU / SoC.
             for (ThermalZone z : zones) {
                 if (!"CPU / SoC".equals(z.category)) continue;
                 if (best == null || cpuScore(z) > cpuScore(best) ||
@@ -201,8 +221,8 @@ public final class ThermalReader {
                 }
             }
 
-            // 2) Se o kernel deixa ler thermal_zoneN/temp mas esconde o arquivo type,
-            // usa um candidato plausível sem fingir que a identificação é 100% certa.
+            // 2) Se o kernel deixa ler thermal_zoneN/temp mas esconde o "type",
+            // usa um candidato plausível e sinaliza que a identificação não é garantida.
             if (best == null) {
                 for (ThermalZone z : zones) {
                     if (!z.anonymous) continue;
@@ -215,18 +235,73 @@ public final class ThermalReader {
                 }
             }
 
+            JSONArray cores = readCpuFrequencies();
+
             if (best != null) {
                 o.put("temperatureC", round1(best.tempC));
                 o.put("sensor", best.name);
                 o.put("source", best.source);
                 o.put("path", best.path);
                 o.put("probable", best.anonymous);
+                o.put("estimated", false);
                 o.put("confidence", best.anonymous ? "provável" : "identificado");
+            } else if (batteryTemp != null) {
+                // 3) Fallback sem sensor físico:
+                // técnica equivalente à observada no app de referência enviado pelo usuário.
+                // Ele usa a temperatura inteira da bateria e acrescenta aproximadamente
+                // 0,1 °C por ponto percentual da razão frequência atual / frequência máxima.
+                double frequencyPercent = cpuFrequencyPercent(cores);
+                int batteryWholeC = (int) batteryTemp.doubleValue();
+                double estimateC = Math.round(batteryWholeC + (frequencyPercent / 10.0));
+
+                o.put("temperatureC", round1(estimateC));
+                o.put("sensor", "Estimativa térmica da CPU");
+                o.put("source", "bateria + frequência da CPU");
+                o.put("probable", false);
+                o.put("estimated", true);
+                o.put("confidence", "estimada");
+                o.put("frequencyPercent", round1(frequencyPercent));
+                o.put("estimateBaseBatteryC", batteryWholeC);
             }
 
-            o.put("cores", readCpuFrequencies());
+            o.put("cores", cores);
         } catch (Exception ignored) {}
         return o;
+    }
+
+    private static double cpuFrequencyPercent(JSONArray cores) {
+        try {
+            double currentSum = 0.0;
+            double maxSum = 0.0;
+            int valid = 0;
+
+            for (int i = 0; i < cores.length(); i++) {
+                JSONObject c = cores.optJSONObject(i);
+                if (c == null || !c.has("currentMHz") || !c.has("maxMHz")) continue;
+
+                double current = c.optDouble("currentMHz", 0.0);
+                double max = c.optDouble("maxMHz", 0.0);
+
+                if (current <= 0.0 || max <= 0.0) continue;
+
+                currentSum += Math.min(current, max);
+                maxSum += max;
+                valid++;
+            }
+
+            if (valid == 0 || maxSum <= 0.0) {
+                // O app de referência usa um valor intermediário quando ainda não há
+                // histórico de frequência. Mantemos o mesmo tipo de fallback.
+                return 50.0;
+            }
+
+            double pct = (currentSum / maxSum) * 100.0;
+            if (pct < 0.0) pct = 0.0;
+            if (pct > 100.0) pct = 100.0;
+            return pct;
+        } catch (Exception e) {
+            return 50.0;
+        }
     }
 
     private static int cpuScore(ThermalZone z) {

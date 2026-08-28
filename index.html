@@ -37,7 +37,7 @@
   <section class="section direct">
     <div class="directTop">
       <div>
-        <div class="directName">🔥 Leitura direta da CPU</div>
+        <div class="directName">🔥 CPU: sensor + estimativa automática</div>
         <div class="directText" id="directText">Testando arquivos térmicos do Android diretamente, sem Shizuku e sem root.</div>
         <div class="directState good" id="directState">Sem Shizuku</div>
       </div>
@@ -85,7 +85,7 @@
     <div class="metric wide"><div class="lab">Luz ambiente</div><div class="val" id="light">Não disponível</div></div>
   </div>
 
-  <p class="note">A V5 não usa Shizuku nem root. Ela tenta diretamente os mesmos tipos de arquivos de temperatura usados por monitores de CPU: caminhos cpu_temp conhecidos, thermal_zone0…99 e hwmon, sem depender de listar as pastas do sistema. Quando o Android deixa ler a temperatura mas esconde o nome do sensor, o app marca a CPU como “provável” em vez de fingir que a identificação é certa.</p>
+  <p class="note">A V5.1 não usa Shizuku nem root. Primeiro ela procura um sensor real de CPU/SoC por caminhos diretos do sistema. Se o HyperOS bloquear todos eles, o app usa uma estimativa baseada na temperatura da bateria e na razão entre frequência atual e máxima da CPU. A interface sempre informa quando o valor é estimado, porque estimativa não é o mesmo que temperatura física medida pelo SoC.</p>
 </div>
 <script>
 (() => {
@@ -103,14 +103,20 @@
     const p=d.directProbe||{};
     const state=$('directState'), text=$('directText');
     const readable=Number(p.readablePaths||0), scanned=Number(p.scannedPaths||0);
-    if(readable>0){
-      state.textContent=`${readable} ${readable===1?'sensor legível':'sensores legíveis'} • sem Shizuku`;
+    const cpu=d.cpu||{};
+    if(readable>0 && !cpu.estimated){
+      state.textContent=`${readable} ${readable===1?'sensor legível':'sensores legíveis'} • leitura real`;
       state.className='directState good';
       text.textContent=`Leitura direta ativa. ${scanned||'Vários'} caminhos foram testados individualmente sem listar as pastas protegidas do HyperOS.`;
-    }else{
-      state.textContent='Nenhum arquivo térmico legível';
+    }else if(cpu.estimated){
+      state.textContent='Estimativa ativa • sem Shizuku';
       state.className='directState warn';
-      text.textContent='O app testou os caminhos diretamente, mas o sistema ainda não liberou uma temperatura interna em °C. O estado térmico oficial continua disponível abaixo.';
+      const freq=cpu.frequencyPercent!=null?` Frequência relativa: ${Number(cpu.frequencyPercent).toFixed(0)}%.`:'';
+      text.textContent=`O HyperOS não liberou um sensor interno real. O app usa o fallback bateria + frequência da CPU, semelhante ao comportamento observado no app de referência.${freq}`;
+    }else{
+      state.textContent='CPU indisponível';
+      state.className='directState warn';
+      text.textContent='Não foi possível obter nem um sensor térmico interno nem os dados necessários para a estimativa.';
     }
   }
 
@@ -120,12 +126,18 @@
     const b=d.battery||{}, cpu=d.cpu||{}, gpu=d.gpu||{}, th=d.systemThermal||{}, env=d.environment||{};
     setTemp($('cpuTemp'),cpu.temperatureC,false);
     if(cpu.temperatureC!=null){
-      $('cpuStatus').textContent=cpu.probable?'Temperatura provável da CPU/SoC':'Temperatura de CPU/SoC identificada';
-      const path=cpu.path?` • ${cpu.path}`:'';
-      $('cpuSensor').textContent=`Sensor: ${cpu.sensor||'CPU / SoC'}${cpu.source?' • '+cpu.source:''}${path}`;
+      if(cpu.estimated){
+        $('cpuStatus').textContent='Estimativa da CPU • não é leitura de sensor físico';
+        const freq=cpu.frequencyPercent!=null?` • freq. ${Number(cpu.frequencyPercent).toFixed(0)}%`:'';
+        $('cpuSensor').textContent=`Método: bateria + frequência da CPU${freq}`;
+      }else{
+        $('cpuStatus').textContent=cpu.probable?'Sensor térmico provável da CPU/SoC':'Sensor real de CPU/SoC identificado';
+        const path=cpu.path?` • ${cpu.path}`:'';
+        $('cpuSensor').textContent=`Sensor: ${cpu.sensor||'CPU / SoC'}${cpu.source?' • '+cpu.source:''}${path}`;
+      }
     } else {
       $('cpuStatus').textContent=`Fallback: ${th.status||'estado térmico indisponível'}`;
-      $('cpuSensor').textContent='Ainda não foi encontrado um sensor de CPU/SoC em °C.';
+      $('cpuSensor').textContent='Ainda não foi possível obter temperatura ou estimativa da CPU.';
     }
     setTemp($('batteryTemp'),b.temperatureC,true);
     $('batteryStatus').textContent=`${b.levelPct!=null?b.levelPct+'% • ':''}${b.status||'--'}`;
